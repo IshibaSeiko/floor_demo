@@ -5,6 +5,7 @@ import 'package:floor_demo/database.dart';
 import 'package:floor_demo/entity/person.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,17 +54,21 @@ class FriendsWidget extends StatelessWidget {
           ],
         ),
         body: SafeArea(
-          child: StreamBuilder<List<String>>(
-              stream: dao.findAllPeopleName(),
+          child: StreamBuilder<List<Person>>(
+              stream: dao.findAllPeople(),
               builder: (_, snapshot) {
                 if (!snapshot.hasData) return Container();
-                final nameList = snapshot.requireData;
+                final persons = snapshot.requireData;
                 return ListView.builder(
-                    itemCount: nameList.length,
+                    itemCount: persons.length,
                     itemBuilder: (_, index) {
                       return ListTile(
-                        title: Text(nameList[index]),
-                        onTap: () {},
+                        title: Text(persons[index].name),
+                        onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => PersonDetailWidget(
+                                  dao: dao, person: persons[index])));
+                        },
                       );
                     });
               }),
@@ -141,16 +146,59 @@ class _AddPersonWidgetState extends State<AddPersonWidget> {
                       ? null
                       : nicknameEditingController.text,
                   age: int.tryParse(ageEditingController.text),
-                  gender: Gender.values.byName(genderEditingController.text),
+                  gender: genderEditingController.text.isEmpty
+                      ? null
+                      : Gender.values.byName(genderEditingController.text),
                   createAt: DateTime.now(),
                   updateAt: null,
-                  profileImage: profileImage));
+                  profileImage: profileImage?.readAsBytesSync()));
               Navigator.of(context).pop();
             },
             child: const Text('Save'),
           ),
         ],
       )),
+    );
+  }
+}
+
+class PersonDetailWidget extends StatelessWidget {
+  final PersonDao dao;
+  final Person person;
+
+  const PersonDetailWidget(
+      {super.key, required this.dao, required this.person});
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = DateFormat('yy-M-d h:m:s');
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(person.name),
+      ),
+      body: Column(children: [
+        const Text('name'),
+        Text(person.name),
+        const Text('nickname'),
+        Text(person.nickname ?? 'NULL'),
+        const Text('age'),
+        Text(person.age != null ? person.age.toString() : 'NULL'),
+        const Text('gender'),
+        Text(person.gender != null ? person.gender.toString() : 'NULL'),
+        const Text('createAt'),
+        Text(formatter.format(person.createAt)),
+        const Text('updateAt'),
+        Text(person.updateAt != null
+            ? formatter.format(person.updateAt!)
+            : 'NULL'),
+        const Text('profileImage'),
+        if (person.profileImage != null)
+          Image.memory(
+            person.profileImage!,
+            width: 200,
+          )
+      ]),
     );
   }
 }

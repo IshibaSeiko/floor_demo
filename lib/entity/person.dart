@@ -9,7 +9,17 @@ enum Gender {
   other,
 }
 
-@entity
+@Entity(indices: [
+  Index(value: [
+    'name',
+    'nickname',
+    'age',
+    'gender',
+    'createAt',
+    'updateAt',
+    'profileImage',
+  ])
+])
 class Person {
   @PrimaryKey(autoGenerate: true)
   final int? id;
@@ -19,7 +29,7 @@ class Person {
   final Gender? gender;
   final DateTime createAt;
   final DateTime? updateAt;
-  final File? profileImage;
+  final Uint8List? profileImage;
 
   Person(
       {this.id,
@@ -67,18 +77,5 @@ class NonNullDateTimeConverter extends TypeConverter<DateTime, int> {
   @override
   int encode(DateTime value) {
     return value.millisecondsSinceEpoch;
-  }
-}
-
-class FileConverter extends TypeConverter<File?, Uint8List?> {
-  @override
-  File? decode(Uint8List? databaseValue) {
-    final file = databaseValue == null ? null : File.fromRawPath(databaseValue);
-    return file;
-  }
-
-  @override
-  Uint8List? encode(File? value) {
-    return value?.readAsBytesSync();
   }
 }

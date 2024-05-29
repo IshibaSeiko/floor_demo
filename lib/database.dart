@@ -13,7 +13,6 @@ part 'database.g.dart';
   GenderConverter,
   DateTimeConverter,
   NonNullDateTimeConverter,
-  FileConverter,
 ])
 @Database(version: 1, entities: [Person])
 abstract class AppDatabase extends FloorDatabase {

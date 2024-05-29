@@ -97,6 +97,8 @@ class _$AppDatabase extends AppDatabase {
       onCreate: (database, version) async {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `Person` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT NOT NULL, `nickname` TEXT, `age` INTEGER, `gender` TEXT, `createAt` INTEGER NOT NULL, `updateAt` INTEGER, `profileImage` BLOB)');
+        await database.execute(
+            'CREATE INDEX `index_Person_name_nickname_age_gender_createAt_updateAt_profileImage` ON `Person` (`name`, `nickname`, `age`, `gender`, `createAt`, `updateAt`, `profileImage`)');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -126,7 +128,7 @@ class _$PersonDao extends PersonDao {
                   'gender': _genderConverter.encode(item.gender),
                   'createAt': _nonNullDateTimeConverter.encode(item.createAt),
                   'updateAt': _dateTimeConverter.encode(item.updateAt),
-                  'profileImage': _fileConverter.encode(item.profileImage)
+                  'profileImage': item.profileImage
                 },
             changeListener);
 
@@ -139,8 +141,8 @@ class _$PersonDao extends PersonDao {
   final InsertionAdapter<Person> _personInsertionAdapter;
 
   @override
-  Future<List<Person>> findAllPeople() async {
-    return _queryAdapter.queryList('SELECT * FROM Person',
+  Stream<List<Person>> findAllPeople() {
+    return _queryAdapter.queryListStream('SELECT * FROM Person',
         mapper: (Map<String, Object?> row) => Person(
             id: row['id'] as int?,
             name: row['name'] as String,
@@ -149,8 +151,9 @@ class _$PersonDao extends PersonDao {
             gender: _genderConverter.decode(row['gender'] as String?),
             createAt: _nonNullDateTimeConverter.decode(row['createAt'] as int),
             updateAt: _dateTimeConverter.decode(row['updateAt'] as int?),
-            profileImage:
-                _fileConverter.decode(row['profileImage'] as Uint8List?)));
+            profileImage: row['profileImage'] as Uint8List?),
+        queryableName: 'Person',
+        isView: false);
   }
 
   @override
@@ -172,8 +175,7 @@ class _$PersonDao extends PersonDao {
             gender: _genderConverter.decode(row['gender'] as String?),
             createAt: _nonNullDateTimeConverter.decode(row['createAt'] as int),
             updateAt: _dateTimeConverter.decode(row['updateAt'] as int?),
-            profileImage:
-                _fileConverter.decode(row['profileImage'] as Uint8List?)),
+            profileImage: row['profileImage'] as Uint8List?),
         arguments: [id],
         queryableName: 'Person',
         isView: false);
@@ -189,4 +191,3 @@ class _$PersonDao extends PersonDao {
 final _genderConverter = GenderConverter();
 final _dateTimeConverter = DateTimeConverter();
 final _nonNullDateTimeConverter = NonNullDateTimeConverter();
-final _fileConverter = FileConverter();
