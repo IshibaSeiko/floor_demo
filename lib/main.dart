@@ -172,32 +172,79 @@ class PersonDetailWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = DateFormat('yy-M-d h:m:s');
+    const valueTextStyle = TextStyle(fontWeight: FontWeight.bold);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(person.name),
       ),
       body: Column(children: [
-        const Text('name'),
-        Text(person.name),
-        const Text('nickname'),
-        Text(person.nickname ?? 'NULL'),
-        const Text('age'),
-        Text(person.age != null ? person.age.toString() : 'NULL'),
-        const Text('gender'),
-        Text(person.gender != null ? person.gender.toString() : 'NULL'),
-        const Text('createAt'),
-        Text(formatter.format(person.createAt)),
-        const Text('updateAt'),
-        Text(person.updateAt != null
-            ? formatter.format(person.updateAt!)
-            : 'NULL'),
-        const Text('profileImage'),
-        if (person.profileImage != null)
-          Image.memory(
-            person.profileImage!,
-            width: 200,
-          )
+        Row(
+          children: [
+            const Text('name: '),
+            Text(
+              person.name,
+              style: valueTextStyle,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Text('nickname: '),
+            Text(
+              person.nickname ?? 'NULL',
+              style: valueTextStyle,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Text('age: '),
+            Text(
+              person.age != null ? person.age.toString() : 'NULL',
+              style: valueTextStyle,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Text('gender: '),
+            Text(
+              person.gender != null ? person.gender.toString() : 'NULL',
+              style: valueTextStyle,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Text('createAt: '),
+            Text(
+              formatter.format(person.createAt),
+              style: valueTextStyle,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Text('updateAt: '),
+            Text(
+              person.updateAt != null
+                  ? formatter.format(person.updateAt!)
+                  : 'NULL',
+              style: valueTextStyle,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Text('profileImage'),
+            if (person.profileImage != null)
+              Image.memory(
+                person.profileImage!,
+                width: 200,
+              )
+          ],
+        ),
       ]),
     );
   }
