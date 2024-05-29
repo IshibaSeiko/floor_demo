@@ -11,8 +11,8 @@ enum Gender {
 
 @entity
 class Person {
-  @primaryKey
-  final int id;
+  @PrimaryKey(autoGenerate: true)
+  final int? id;
   final String name;
   final String? nickname;
   final int? age;
@@ -22,7 +22,7 @@ class Person {
   final File? profileImage;
 
   Person(
-      {required this.id,
+      {this.id,
       required this.name,
       required this.nickname,
       required this.age,

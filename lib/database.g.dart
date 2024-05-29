@@ -96,7 +96,7 @@ class _$AppDatabase extends AppDatabase {
       },
       onCreate: (database, version) async {
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `Person` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `nickname` TEXT, `age` INTEGER, `gender` TEXT, `createAt` INTEGER NOT NULL, `updateAt` INTEGER, `profileImage` BLOB, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `Person` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT NOT NULL, `nickname` TEXT, `age` INTEGER, `gender` TEXT, `createAt` INTEGER NOT NULL, `updateAt` INTEGER, `profileImage` BLOB)');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -142,7 +142,7 @@ class _$PersonDao extends PersonDao {
   Future<List<Person>> findAllPeople() async {
     return _queryAdapter.queryList('SELECT * FROM Person',
         mapper: (Map<String, Object?> row) => Person(
-            id: row['id'] as int,
+            id: row['id'] as int?,
             name: row['name'] as String,
             nickname: row['nickname'] as String?,
             age: row['age'] as int?,
@@ -165,7 +165,7 @@ class _$PersonDao extends PersonDao {
   Stream<Person?> findPersonById(int id) {
     return _queryAdapter.queryStream('SELECT * FROM Person WHERE id = ?1',
         mapper: (Map<String, Object?> row) => Person(
-            id: row['id'] as int,
+            id: row['id'] as int?,
             name: row['name'] as String,
             nickname: row['nickname'] as String?,
             age: row['age'] as int?,
