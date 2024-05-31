@@ -1,16 +1,6 @@
-# floor_demo
+# floor demo
+This repository is inspired by the “floor” package for using SQL in Flutter.
 
-A new Flutter project.
+The version identified by commit c9d0bd6864b857a68a02ca0cb1225fb5b5dfe1fc (version 1) supports inserting person data.
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The commit 9781cff71008e5b795ed58720132ec9236d286c6 introduces a migration system. It supports inserting data for both persons and pets.
