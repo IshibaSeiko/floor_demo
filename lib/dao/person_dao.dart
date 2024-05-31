@@ -12,6 +12,9 @@ abstract class PersonDao {
   @Query('SELECT * FROM Person WHERE id = :id')
   Stream<Person?> findPersonById(int id);
 
+  @Query('SELECT id FROM Person WHERE name = :name')
+  Future<int?> findPersonIdByName(String name);
+
   @insert
   Future<void> insertPerson(Person person);
 }

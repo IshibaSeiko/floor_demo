@@ -22,6 +22,7 @@ enum Gender {
 class Person {
   @PrimaryKey(autoGenerate: true)
   final int? id;
+  @primaryKey
   final String name;
   final String? nickname;
   final int? age;

@@ -1,40 +1,65 @@
 import 'dart:io';
 
+import 'package:floor/floor.dart';
 import 'package:floor_demo/dao/person_dao.dart';
+import 'package:floor_demo/dao/pet_dao.dart';
 import 'package:floor_demo/database.dart';
 import 'package:floor_demo/entity/person.dart';
+import 'package:floor_demo/entity/pet.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final database =
-      await $FloorAppDatabase.databaseBuilder('flutter_database.db').build();
-  final dao = database.personDao;
+  final migration1to2 = Migration(1, 2, (database) async {
+    await database.execute(
+        ('CREATE TABLE pets (pet_name TEXT PRIMARY KEY, type TEXT, owner INTEGER)'));
+    await database.execute(
+        'CREATE VIEW petWithOwnerView AS SELECT t.*, r.* FROM pets t LEFT JOIN Person r ON t.owner = r.id');
+  });
+
+  final database = await $FloorAppDatabase
+      .databaseBuilder('flutter_database.db')
+      .addMigrations([migration1to2]).build();
+
+  final personDao = database.personDao;
+  final petDao = database.petDao;
   runApp(FloorApp(
-    dao: dao,
+    personDao: personDao,
+    petDao: petDao,
   ));
 }
 
 class FloorApp extends StatelessWidget {
-  final PersonDao dao;
-  const FloorApp({super.key, required this.dao});
+  final PersonDao personDao;
+  final PetDao petDao;
+  const FloorApp({
+    super.key,
+    required this.personDao,
+    required this.petDao,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Floor Demo',
       home: FriendsWidget(
-        dao: dao,
+        personDao: personDao,
+        petDao: petDao,
       ),
     );
   }
 }
 
 class FriendsWidget extends StatelessWidget {
-  final PersonDao dao;
-  const FriendsWidget({super.key, required this.dao});
+  final PersonDao personDao;
+  final PetDao petDao;
+  const FriendsWidget({
+    super.key,
+    required this.personDao,
+    required this.petDao,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +71,10 @@ class FriendsWidget extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => AddPersonWidget(dao: dao),
+                      builder: (_) => AddPersonWidget(
+                        personDao: personDao,
+                        petDao: petDao,
+                      ),
                     ),
                   );
                 },
@@ -55,7 +83,7 @@ class FriendsWidget extends StatelessWidget {
         ),
         body: SafeArea(
           child: StreamBuilder<List<Person>>(
-              stream: dao.findAllPeople(),
+              stream: personDao.findAllPeople(),
               builder: (_, snapshot) {
                 if (!snapshot.hasData) return Container();
                 final persons = snapshot.requireData;
@@ -67,7 +95,7 @@ class FriendsWidget extends StatelessWidget {
                         onTap: () {
                           Navigator.of(context).push(MaterialPageRoute(
                               builder: (_) => PersonDetailWidget(
-                                  dao: dao, person: persons[index])));
+                                  petDao: petDao, person: persons[index])));
                         },
                       );
                     });
@@ -77,8 +105,13 @@ class FriendsWidget extends StatelessWidget {
 }
 
 class AddPersonWidget extends StatefulWidget {
-  final PersonDao dao;
-  const AddPersonWidget({super.key, required this.dao});
+  final PersonDao personDao;
+  final PetDao petDao;
+  const AddPersonWidget({
+    super.key,
+    required this.personDao,
+    required this.petDao,
+  });
 
   @override
   State<AddPersonWidget> createState() => _AddPersonWidgetState();
@@ -90,6 +123,9 @@ class _AddPersonWidgetState extends State<AddPersonWidget> {
   final ageEditingController = TextEditingController();
   final genderEditingController = TextEditingController();
   File? profileImage;
+
+  final petNameEditingController = TextEditingController();
+  final petTypeEditingController = TextEditingController();
 
   Future<void> getImage() async {
     final pickedFile =
@@ -138,9 +174,18 @@ class _AddPersonWidgetState extends State<AddPersonWidget> {
             decoration:
                 const InputDecoration(hintText: 'male , female or other'),
           ),
+          const Divider(),
+          TextField(
+            controller: petNameEditingController,
+            decoration: const InputDecoration(hintText: "pet's name *"),
+          ),
+          TextField(
+            controller: petTypeEditingController,
+            decoration: const InputDecoration(hintText: "pet's type *"),
+          ),
           FilledButton.tonal(
-            onPressed: () {
-              widget.dao.insertPerson(Person(
+            onPressed: () async {
+              widget.personDao.insertPerson(Person(
                   name: nameEditingController.text,
                   nickname: nicknameEditingController.text.isEmpty
                       ? null
@@ -152,6 +197,16 @@ class _AddPersonWidgetState extends State<AddPersonWidget> {
                   createAt: DateTime.now(),
                   updateAt: null,
                   profileImage: profileImage?.readAsBytesSync()));
+
+              final personId = await widget.personDao
+                  .findPersonIdByName(nameEditingController.text);
+              if (personId != null) {
+                widget.petDao.insertPet(Pet(
+                    name: petNameEditingController.text,
+                    type: petTypeEditingController.text,
+                    owner: personId));
+              }
+
               Navigator.of(context).pop();
             },
             child: const Text('Save'),
@@ -163,11 +218,11 @@ class _AddPersonWidgetState extends State<AddPersonWidget> {
 }
 
 class PersonDetailWidget extends StatelessWidget {
-  final PersonDao dao;
+  final PetDao petDao;
   final Person person;
 
   const PersonDetailWidget(
-      {super.key, required this.dao, required this.person});
+      {super.key, required this.petDao, required this.person});
 
   @override
   Widget build(BuildContext context) {
@@ -178,74 +233,96 @@ class PersonDetailWidget extends StatelessWidget {
       appBar: AppBar(
         title: Text(person.name),
       ),
-      body: Column(children: [
-        Row(
-          children: [
-            const Text('name: '),
-            Text(
-              person.name,
-              style: valueTextStyle,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Text('nickname: '),
-            Text(
-              person.nickname ?? 'NULL',
-              style: valueTextStyle,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Text('age: '),
-            Text(
-              person.age != null ? person.age.toString() : 'NULL',
-              style: valueTextStyle,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Text('gender: '),
-            Text(
-              person.gender != null ? person.gender.toString() : 'NULL',
-              style: valueTextStyle,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Text('createAt: '),
-            Text(
-              formatter.format(person.createAt),
-              style: valueTextStyle,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Text('updateAt: '),
-            Text(
-              person.updateAt != null
-                  ? formatter.format(person.updateAt!)
-                  : 'NULL',
-              style: valueTextStyle,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Text('profileImage'),
-            if (person.profileImage != null)
-              Image.memory(
-                person.profileImage!,
-                width: 200,
-              )
-          ],
-        ),
-      ]),
+      body: FutureBuilder(
+          future: petDao.getPetWithPerson(person.id!),
+          builder: (context, snapshot) {
+            return ListView(children: [
+              Row(
+                children: [
+                  const Text('name: '),
+                  Text(
+                    person.name,
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('nickname: '),
+                  Text(
+                    person.nickname ?? 'NULL',
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('age: '),
+                  Text(
+                    person.age != null ? person.age.toString() : 'NULL',
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('gender: '),
+                  Text(
+                    person.gender != null ? person.gender.toString() : 'NULL',
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('createAt: '),
+                  Text(
+                    formatter.format(person.createAt),
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('updateAt: '),
+                  Text(
+                    person.updateAt != null
+                        ? formatter.format(person.updateAt!)
+                        : 'NULL',
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('profileImage'),
+                  if (person.profileImage != null)
+                    Image.memory(
+                      person.profileImage!,
+                      width: 200,
+                    )
+                ],
+              ),
+              Row(
+                children: [
+                  const Text("pet's name: "),
+                  Text(
+                    snapshot.data == null ? '' : snapshot.data!.name,
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text("pet's type: "),
+                  Text(
+                    snapshot.data == null ? '' : snapshot.data!.type,
+                    style: valueTextStyle,
+                  ),
+                ],
+              ),
+            ]);
+          }),
     );
   }
 }

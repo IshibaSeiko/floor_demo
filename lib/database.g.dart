@@ -74,13 +74,15 @@ class _$AppDatabase extends AppDatabase {
 
   PersonDao? _personDaoInstance;
 
+  PetDao? _petDaoInstance;
+
   Future<sqflite.Database> open(
     String path,
     List<Migration> migrations, [
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 1,
+      version: 2,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -98,7 +100,13 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `Person` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT NOT NULL, `nickname` TEXT, `age` INTEGER, `gender` TEXT, `createAt` INTEGER NOT NULL, `updateAt` INTEGER, `profileImage` BLOB)');
         await database.execute(
+            'CREATE TABLE IF NOT EXISTS `pets` (`pet_name` TEXT NOT NULL, `type` TEXT NOT NULL, `owner` INTEGER NOT NULL, PRIMARY KEY (`pet_name`))');
+        await database.execute(
             'CREATE INDEX `index_Person_name_nickname_age_gender_createAt_updateAt_profileImage` ON `Person` (`name`, `nickname`, `age`, `gender`, `createAt`, `updateAt`, `profileImage`)');
+        await database.execute(
+            'CREATE INDEX `index_pets_pet_name_type` ON `pets` (`pet_name`, `type`)');
+        await database.execute(
+            'CREATE VIEW IF NOT EXISTS `petWithOwnerView` AS SELECT t.*, r.* FROM pets as t LEFT JOIN Person as r ON t.owner = r.id');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -109,6 +117,11 @@ class _$AppDatabase extends AppDatabase {
   @override
   PersonDao get personDao {
     return _personDaoInstance ??= _$PersonDao(database, changeListener);
+  }
+
+  @override
+  PetDao get petDao {
+    return _petDaoInstance ??= _$PetDao(database, changeListener);
   }
 }
 
@@ -182,8 +195,62 @@ class _$PersonDao extends PersonDao {
   }
 
   @override
+  Future<int?> findPersonIdByName(String name) async {
+    return _queryAdapter.query('SELECT id FROM Person WHERE name = ?1',
+        mapper: (Map<String, Object?> row) => row.values.first as int,
+        arguments: [name]);
+  }
+
+  @override
   Future<void> insertPerson(Person person) async {
     await _personInsertionAdapter.insert(person, OnConflictStrategy.abort);
+  }
+}
+
+class _$PetDao extends PetDao {
+  _$PetDao(
+    this.database,
+    this.changeListener,
+  )   : _queryAdapter = QueryAdapter(database),
+        _petInsertionAdapter = InsertionAdapter(
+            database,
+            'pets',
+            (Pet item) => <String, Object?>{
+                  'pet_name': item.name,
+                  'type': item.type,
+                  'owner': item.owner
+                });
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final QueryAdapter _queryAdapter;
+
+  final InsertionAdapter<Pet> _petInsertionAdapter;
+
+  @override
+  Future<PetWithOwner?> getPetWithPerson(int id) async {
+    return _queryAdapter.query(
+        'SELECT * FROM petWithOwnerView WHERE owner = ?1',
+        mapper: (Map<String, Object?> row) => PetWithOwner(
+            petName: row['pet_name'] as String,
+            type: row['type'] as String,
+            owner: row['owner'] as int,
+            id: row['id'] as int?,
+            name: row['name'] as String,
+            nickname: row['nickname'] as String?,
+            age: row['age'] as int?,
+            gender: _genderConverter.decode(row['gender'] as String?),
+            createAt: _nonNullDateTimeConverter.decode(row['createAt'] as int),
+            updateAt: _dateTimeConverter.decode(row['updateAt'] as int?),
+            profileImage: row['profileImage'] as Uint8List?),
+        arguments: [id]);
+  }
+
+  @override
+  Future<void> insertPet(Pet pet) async {
+    await _petInsertionAdapter.insert(pet, OnConflictStrategy.abort);
   }
 }
 
