@@ -307,7 +307,7 @@ class PersonDetailWidget extends StatelessWidget {
                 children: [
                   const Text("pet's name: "),
                   Text(
-                    snapshot.data == null ? '' : snapshot.data!.name,
+                    snapshot.data == null ? '' : snapshot.data!.petName,
                     style: valueTextStyle,
                   ),
                 ],
